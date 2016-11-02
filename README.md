@@ -1,1 +1,1 @@
-imagelightbox
+Official GitHub repository for imagelightbox.js
