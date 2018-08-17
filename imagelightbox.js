@@ -55,7 +55,6 @@
 		var options	   = $.extend(
 						 {
 						 	selector:		'id="imagelightbox"',
-						 	allowedTypes:	'png|jpg|jpeg|gif',
 						 	animationSpeed:	250,
 						 	preloadNext:	true,
 						 	enableKeyboard:	true,
@@ -76,11 +75,6 @@
 			imageHeight = 0,
 			swipeDiff	= 0,
 			inProgress	= false,
-
-			isTargetValid = function( element )
-			{
-				return $( element ).prop( 'tagName' ).toLowerCase() == 'a' && ( new RegExp( '\.(' + options.allowedTypes + ')$', 'i' ) ).test( $( element ).attr( 'href' ) );
-			},
 
 			setImage = function()
 			{
@@ -140,7 +134,7 @@
 				{
 					image = $( '<img ' + options.selector + ' />' )
 					.attr( 'src', target.attr( 'href' ) )
-					.load( function()
+					.on( 'load', function()
 					{
 						image.appendTo( 'body' );
 						setImage();
@@ -169,13 +163,13 @@
 						{
 							var nextTarget = targets.eq( targets.index( target ) + 1 );
 							if( !nextTarget.length ) nextTarget = targets.eq( 0 );
-							$( '<img />' ).attr( 'src', nextTarget.attr( 'href' ) ).load();
+							$( '<img />' ).attr( 'src', nextTarget.attr( 'href' ) );
 						}
 					})
-					.error( function()
+					.on( 'error', function()
 					{
 						if( options.onLoadEnd !== false ) options.onLoadEnd();
-					})
+					});
 
 					var swipeStart	 = 0,
 						swipeEnd	 = 0,
@@ -245,6 +239,24 @@
 					inProgress = false;
 					if( options.onEnd !== false ) options.onEnd();
 				});
+			},
+
+			addTargets = function( newTargets )
+			{
+				newTargets.each( function()
+				{
+					targets = targets.add( $( this ) );
+				});
+
+				newTargets.on( 'click.imageLightbox', function( e )
+				{
+					e.preventDefault();
+					if( inProgress ) return false;
+					inProgress = false;
+					if( options.onStart !== false ) options.onStart();
+					target = $( this );
+					loadImage();
+				});
 			};
 
 		$( window ).on( 'resize', setImage );
@@ -254,7 +266,7 @@
 			$( document ).on( hasTouch ? 'touchend' : 'click', function( e )
 			{
 				if( image.length && !$( e.target ).is( image ) ) quitLightbox();
-			})
+			});
 		}
 
 		if( options.enableKeyboard )
@@ -273,22 +285,7 @@
 			});
 		}
 
-		$( document ).on( 'click', this.selector, function( e )
-		{
-			if( !isTargetValid( this ) ) return true;
-			e.preventDefault();
-			if( inProgress ) return false;
-			inProgress = false;
-			if( options.onStart !== false ) options.onStart();
-			target = $( this );
-			loadImage();
-		});
-
-		this.each( function()
-		{
-			if( !isTargetValid( this ) ) return true;
-			targets = targets.add( $( this ) );
-		});
+		addTargets( $( this ) );
 
 		this.switchImageLightbox = function( index )
 		{
@@ -300,6 +297,11 @@
 				loadImage( index < currentIndex ? 'left' : 'right' );
 			}
 			return this;
+		};
+
+		this.addToImageLightbox = function( newTargets )
+		{
+			addTargets( newTargets );
 		};
 
 		this.quitImageLightbox = function()
